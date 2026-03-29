@@ -1,0 +1,95 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User profile information and stats.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "displayName": { "type": "string" },
+        "email": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "role": { "type": "string", "enum": ["user", "admin"] },
+        "points": { "type": "number" },
+        "subscriptionTier": { "type": "string", "enum": ["free", "standard", "premium"] },
+        "friends": { "type": "array", "items": { "type": "string" } },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["uid", "displayName", "email", "role", "points", "subscriptionTier", "createdAt"]
+    },
+    "Game": {
+      "title": "Game",
+      "description": "Game configuration.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "icon": { "type": "string" },
+        "isActive": { "type": "boolean" },
+        "category": { "type": "string" }
+      },
+      "required": ["id", "name", "isActive"]
+    },
+    "Room": {
+      "title": "Room",
+      "description": "Multiplayer game room.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "gameId": { "type": "string" },
+        "hostId": { "type": "string" },
+        "playerCount": { "type": "number" },
+        "players": { "type": "array", "items": { "type": "string" } },
+        "status": { "type": "string", "enum": ["waiting", "playing", "finished"] },
+        "gameState": { "type": "object" },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["id", "gameId", "hostId", "status", "createdAt"]
+    },
+    "FriendRequest": {
+      "title": "FriendRequest",
+      "description": "A request to be friends between two users.",
+      "type": "object",
+      "properties": {
+        "from": { "type": "string" },
+        "to": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "accepted", "declined"] },
+        "createdAt": { "type": "object" }
+      },
+      "required": ["from", "to", "status"]
+    },
+    "Friend": {
+      "title": "Friend",
+      "description": "A friend relationship record.",
+      "type": "object",
+      "properties": {
+        "status": { "type": "string", "enum": ["accepted"] },
+        "addedAt": { "type": "number" }
+      },
+      "required": ["status", "addedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "User profile documents."
+    },
+    "/users/{userId}/friends/{friendId}": {
+      "schema": "Friend",
+      "description": "Subcollection of friends for a user."
+    },
+    "/friendRequests/{requestId}": {
+      "schema": "FriendRequest",
+      "description": "Friend request documents."
+    },
+    "/games/{gameId}": {
+      "schema": "Game",
+      "description": "Game configuration documents."
+    },
+    "/rooms/{roomId}": {
+      "schema": "Room",
+      "description": "Game room documents."
+    }
+  }
+}

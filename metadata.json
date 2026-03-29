@@ -1,0 +1,9 @@
+{
+  "name": "GAIM",
+  "description": "Multiplayer social quiz & party game platform for Georgian-speaking users.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone",
+    "geolocation"
+  ]
+}

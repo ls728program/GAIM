@@ -1,0 +1,128 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Fields:
+    //   - uid: string (required)
+    //   - displayName: string (required)
+    //   - email: string (required)
+    //   - photoURL: string (optional)
+    //   - role: string (required, 'user'|'admin')
+    //   - points: number (required)
+    //   - subscriptionTier: string (required, 'free'|'standard'|'premium')
+    //   - friends: list (required)
+    //   - createdAt: number (required)
+    //
+    // Collection: games
+    // Fields:
+    //   - id: string (required)
+    //   - name: string (required)
+    //   - description: string (optional)
+    //   - icon: string (optional)
+    //   - isActive: bool (required)
+    //   - category: string (optional)
+    //
+    // Collection: rooms
+    // Fields:
+    //   - id: string (required)
+    //   - gameId: string (required)
+    //   - hostId: string (required)
+    //   - playerCount: number (required)
+    //   - players: list (required)
+    //   - status: string (required, 'waiting'|'playing'|'finished')
+    //   - gameState: map (optional)
+    //   - createdAt: number (required)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && 
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+         (request.auth.token.email == "shanidze.luka728@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'displayName', 'email', 'role', 'points', 'subscriptionTier', 'friends', 'createdAt']) &&
+             data.uid is string &&
+             data.displayName is string && data.displayName.size() < 100 &&
+             data.email is string &&
+             data.role in ['user', 'admin'] &&
+             data.points is number &&
+             data.subscriptionTier in ['free', 'standard', 'premium'] &&
+             data.friends is list &&
+             data.createdAt is number;
+    }
+
+    function isValidRoom(data) {
+      return data.keys().hasAll(['gameId', 'hostId', 'playerCount', 'players', 'status', 'createdAt']) &&
+             data.gameId is string &&
+             data.hostId is string &&
+             data.playerCount is number &&
+             data.players is list &&
+             data.status in ['waiting', 'playing', 'finished'] &&
+             data.createdAt is number;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if isOwner(userId) && isValidUser(request.resource.data) && request.resource.data.role == 'user';
+      allow update: if (isOwner(userId) && isValidUser(request.resource.data) && request.resource.data.role == resource.data.role) || isAdmin();
+      allow delete: if isAdmin();
+
+      match /friends/{friendId} {
+        allow read: if isOwner(userId);
+        allow write: if isOwner(userId);
+      }
+    }
+
+    match /friendRequests/{requestId} {
+      allow read: if isAuthenticated() && (request.auth.uid == resource.data.to || request.auth.uid == resource.data.from);
+      allow create: if isAuthenticated() && request.auth.uid == request.resource.data.from;
+      allow update: if isAuthenticated() && (request.auth.uid == resource.data.to || request.auth.uid == resource.data.from);
+      allow delete: if isAuthenticated() && (request.auth.uid == resource.data.to || request.auth.uid == resource.data.from);
+    }
+
+    match /games/{gameId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /rooms/{roomId} {
+      allow read: if isAuthenticated();
+
+      // Authenticated users can create only valid rooms where they are the host
+      allow create: if isAuthenticated()
+          && request.resource.data.hostId == request.auth.uid
+          && request.resource.data.gameId == 'imposter'
+          && isValidRoom(request.resource.data);
+
+      // Only room host can update; enforce valid shape on update as well
+      allow update: if isAuthenticated()
+          && resource.data.hostId == request.auth.uid
+          && isValidRoom(request.resource.data);
+
+      allow delete: if isAuthenticated() && (resource.data.hostId == request.auth.uid || isAdmin());
+    }
+  }
+}
